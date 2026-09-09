@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:18
+    ports:
+      - "127.0.0.1:5432:5432" 
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${DB_DATABASE?Variable not set}
+      POSTGRES_PASSWORD: ${DB_PASSWORD?Variable not set}
+      POSTGRES_USER: ${DB_USERNAME?Variable not set}
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      start_period: 30s
+    volumes:
+      - db_data:/var/lib/postgresql
+
+volumes:
+  db_data:
