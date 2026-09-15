@@ -12,6 +12,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
       start_period: 30s
+    command: >
+      sh -c "echo 'CREATE EXTENSION IF NOT EXISTS citext;' > /docker-entrypoint-initdb.d/init.sql &&
+             docker-entrypoint.sh postgres"
     volumes:
       - db_data:/var/lib/postgresql
 
