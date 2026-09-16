@@ -33,6 +33,10 @@ func (app *application) serve() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
+		// block until all bg tasks done
+		app.logger.Info("completing background tasks", "addr", srv.Addr)
+		app.wg.Wait()
+
 		shutdownError <- srv.Shutdown(ctx)
 	}()
 

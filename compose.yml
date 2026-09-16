@@ -12,11 +12,19 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
       start_period: 30s
-    command: >
-      sh -c "echo 'CREATE EXTENSION IF NOT EXISTS citext;' > /docker-entrypoint-initdb.d/init.sql &&
-             docker-entrypoint.sh postgres"
     volumes:
       - db_data:/var/lib/postgresql
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    environment:
+      - MP_SMTP_AUTH=admin:password123
+      - MP_SMTP_AUTH_ALLOW_INSECURE=true
 
 volumes:
   db_data:
