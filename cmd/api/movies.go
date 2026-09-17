@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gunturdwiap/greenlight/internal/data"
-	"github.com/gunturdwiap/greenlight/internal/validators"
+	"github.com/gunturdwiap/greenlight/internal/validator"
 )
 
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +30,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 		Genres:  input.Genres,
 	}
 
-	v := validators.New()
+	v := validator.New()
 	if data.ValidateMovie(v, movie); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
@@ -124,7 +124,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		movie.Genres = input.Genres
 	}
 
-	v := validators.New()
+	v := validator.New()
 	if data.ValidateMovie(v, movie); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
@@ -179,7 +179,7 @@ func (app *application) listMovieHandler(w http.ResponseWriter, r *http.Request)
 		data.Filters
 	}
 
-	v := validators.New()
+	v := validator.New()
 	qs := r.URL.Query()
 
 	input.Title = app.readString(qs, "title", "")

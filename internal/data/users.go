@@ -8,13 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gunturdwiap/greenlight/internal/validators"
+	"github.com/gunturdwiap/greenlight/internal/validator"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	ErrDuplicateEmail = errors.New("duplicate email")
 )
+
+var AnonymousUser = &User{}
 
 type User struct {
 	ID        int64     `json:"id"`
@@ -24,6 +26,10 @@ type User struct {
 	Password  password  `json:"-"`
 	Activated bool      `json:"activated"`
 	Version   int32     `json:"version"`
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 type password struct {
@@ -58,18 +64,18 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 	return true, nil
 }
 
-func ValidateEmail(v *validators.Validator, email string) {
+func ValidateEmail(v *validator.Validator, email string) {
 	v.Check(email != "", "email", "must be provided")
-	v.Check(validators.Matches(email, validators.EmailRX), "email", "must be a valid email address")
+	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
 }
 
-func ValidatePasswordPlaintext(v *validators.Validator, password string) {
+func ValidatePasswordPlaintext(v *validator.Validator, password string) {
 	v.Check(password != "", "password", "must be provided")
 	v.Check(len(password) >= 8, "password", "must be at least 8 bytes long")
 	v.Check(len(password) <= 72, "password", "must not be more than 72 bytes long")
 }
 
-func ValidateUser(v *validators.Validator, user *User) {
+func ValidateUser(v *validator.Validator, user *User) {
 	v.Check(user.Name != "", "name", "must be provided")
 	v.Check(len(user.Name) <= 500, "name", "must be not be more than 500 bytes long")
 

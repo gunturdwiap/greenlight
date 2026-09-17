@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gunturdwiap/greenlight/internal/validators"
+	"github.com/gunturdwiap/greenlight/internal/validator"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -72,7 +72,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 			return fmt.Errorf("body contains incorrect JSON type (at character %d)", unmarshalTypeError.Offset)
 
 		case errors.Is(err, io.EOF):
-			return errors.New("body must be not emtpy")
+			return errors.New("body must be not empty")
 
 		// check if there is unknown field
 		// hacky, json/v2 fixes this with json.ErrUnknownName, pls upgrade
@@ -117,7 +117,7 @@ func (app *application) readCSV(qs url.Values, key string, defaultValue []string
 	return strings.Split(val, ",")
 }
 
-func (app *application) readInt(qs url.Values, key string, defaultValue int, v *validators.Validator) int {
+func (app *application) readInt(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
 	val := qs.Get(key)
 	if val == "" {
 		return defaultValue

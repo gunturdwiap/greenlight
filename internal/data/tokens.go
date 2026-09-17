@@ -7,20 +7,21 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/gunturdwiap/greenlight/internal/validators"
+	"github.com/gunturdwiap/greenlight/internal/validator"
 )
 
 // use enum?
 const (
-	ScopeActivation = "activation"
+	ScopeActivation     = "activation"
+	ScopeAuthentication = "authentication"
 )
 
 type Token struct {
-	Plaintext string
-	Hash      []byte
-	UserID    int64
-	Expiry    time.Time
-	Scope     string
+	Plaintext string    `json:"token"`
+	Hash      []byte    `json:"-"`
+	UserID    int64     `json:"-"`
+	Expiry    time.Time `json:"expiry"`
+	Scope     string    `json:"-"`
 }
 
 func generateToken(userID int64, ttl time.Duration, scope string) *Token {
@@ -37,7 +38,7 @@ func generateToken(userID int64, ttl time.Duration, scope string) *Token {
 	return token
 }
 
-func ValidateTokenPlaintext(v *validators.Validator, tokenPlaintext string) {
+func ValidateTokenPlaintext(v *validator.Validator, tokenPlaintext string) {
 	v.Check(tokenPlaintext != "", "token", "must be provided")
 	v.Check(len(tokenPlaintext) == 26, "token", "must be 26 bytes long")
 }
