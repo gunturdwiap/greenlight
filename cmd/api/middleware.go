@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -176,4 +177,32 @@ func (app *application) requirePermission(code string, next http.HandlerFunc) ht
 	})
 
 	return app.requireActivatedUser(fn)
+}
+
+func (app *application) enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// tell cache to save different copies based on these headers
+		w.Header().Add("Vary", "Origin")
+		w.Header().Add("Vary", "Access-Control-Request-Method")
+
+		originHeader := r.Header.Get("Origin")
+		if originHeader != "" {
+			if slices.Contains(app.config.cors.trustedOrigins, originHeader) {
+				// echo
+				w.Header().Set("Access-Control-Allow-Origin", originHeader)
+
+				// check if its a preflight request
+				if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
+					w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE")
+					w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+
 }
