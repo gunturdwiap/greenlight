@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"expvar"
+	"fmt"
 	"runtime"
 
 	"flag"
@@ -15,11 +16,13 @@ import (
 
 	"github.com/gunturdwiap/greenlight/internal/data"
 	"github.com/gunturdwiap/greenlight/internal/mailer"
+	"github.com/gunturdwiap/greenlight/internal/vcs"
 	_ "github.com/lib/pq"
 )
 
-// app version num, should be generated at build time...
-const version = "1.0.0"
+var (
+	version = vcs.Version()
+)
 
 type config struct {
 	port int
@@ -81,7 +84,14 @@ func main() {
 		return nil
 	})
 
+	displayVersion := flag.Bool("version", false, "Display version and exit")
+
 	flag.Parse()
+
+	if *displayVersion {
+		fmt.Printf("Version\t%s\n", version)
+		os.Exit(0)
+	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	db, err := openDB(cfg)
