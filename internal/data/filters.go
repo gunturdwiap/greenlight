@@ -32,7 +32,6 @@ func (f Filters) sortColumn() string {
 	panic("unsafe sort parameter")
 }
 
-// maybe return enum?
 func (f Filters) sortDirection() string {
 	if strings.HasPrefix(f.Sort, "-") {
 		return "DESC"

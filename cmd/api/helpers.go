@@ -131,6 +131,7 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 
 	return i
 }
+
 func (app *application) background(fn func()) {
 	app.wg.Go(func() {
 		defer func() {

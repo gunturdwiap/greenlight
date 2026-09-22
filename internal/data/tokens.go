@@ -10,7 +10,6 @@ import (
 	"github.com/gunturdwiap/greenlight/internal/validator"
 )
 
-// use enum?
 const (
 	ScopeActivation     = "activation"
 	ScopeAuthentication = "authentication"
