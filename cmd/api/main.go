@@ -50,11 +50,15 @@ type config struct {
 	}
 }
 
+type Mailer interface {
+	Send(recipient string, templateFile string, data any) error
+}
+
 type application struct {
 	config config
 	logger *slog.Logger
 	models data.Models
-	mailer *mailer.Mailer
+	mailer Mailer
 	wg     sync.WaitGroup
 }
 

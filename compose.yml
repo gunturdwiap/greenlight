@@ -16,6 +16,16 @@ services:
     volumes:
       - db_data:/var/lib/postgresql
 
+  test-db:
+    image: postgres:18
+    container_name: greenlight-test-db
+    ports:
+      - "127.0.0.1:5433:5432" 
+    environment:
+      POSTGRES_DB: greenlight_test
+      POSTGRES_PASSWORD: pa55word
+      POSTGRES_USER: greenlight_test
+
   mailpit:
     image: axllent/mailpit:latest
     container_name: mailpit
