@@ -11,8 +11,6 @@ import (
 
 func TestRegisterUser(t *testing.T) {
 	app := newTestApplication(t)
-	mailer := &mockMailer{}
-	app.mailer = mailer
 
 	ts := newTestServer(t, app.routes())
 
@@ -22,8 +20,8 @@ func TestRegisterUser(t *testing.T) {
 		"password": "pa55word",
 	})
 
-	assert.Equal(t, mailer.recipient, "test@example.com")
-	assert.Equal(t, mailer.templateFile, "user_welcome.tmpl")
+	assert.Equal(t, app.mailer.recipient, "test@example.com")
+	assert.Equal(t, app.mailer.templateFile, "user_welcome.tmpl")
 	assert.Equal(t, http.StatusAccepted, code)
 }
 
@@ -114,23 +112,8 @@ func TestActivateUser(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := &data.User{
-		Name:      "test",
-		Email:     "test@example.com",
-		Activated: false,
-	}
-	if err := user.Password.Set("pa55word"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := app.models.Users.Insert(user); err != nil {
-		t.Fatal(err)
-	}
-
-	activationToken, err := app.models.Tokens.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
-	if err != nil {
-		t.Fatal(err)
-	}
+	user := app.createTestUser(t)
+	activationToken := app.createTestToken(t, user.ID, time.Hour, data.ScopeActivation)
 
 	code, _, body := ts.putJSON(t, "/v1/users/activated", map[string]any{
 		"token": activationToken.Plaintext,
@@ -155,23 +138,8 @@ func TestActivateUserExpiredToken(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := &data.User{
-		Name:      "expired",
-		Email:     "expired@example.com",
-		Activated: false,
-	}
-	if err := user.Password.Set("pa55word"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := app.models.Users.Insert(user); err != nil {
-		t.Fatal(err)
-	}
-
-	activationToken, err := app.models.Tokens.New(user.ID, -time.Hour, data.ScopeActivation)
-	if err != nil {
-		t.Fatal(err)
-	}
+	user := app.createTestUser(t)
+	activationToken := app.createTestToken(t, user.ID, -time.Hour, data.ScopeActivation)
 
 	code, _, _ := ts.putJSON(t, "/v1/users/activated", map[string]any{
 		"token": activationToken.Plaintext,
@@ -195,23 +163,8 @@ func TestActivateUserAlreadyActivated(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := &data.User{
-		Name:      "activated",
-		Email:     "activated@example.com",
-		Activated: true,
-	}
-	if err := user.Password.Set("pa55word"); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := app.models.Users.Insert(user); err != nil {
-		t.Fatal(err)
-	}
-
-	activationToken, err := app.models.Tokens.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
-	if err != nil {
-		t.Fatal(err)
-	}
+	user := app.createTestUser(t)
+	activationToken := app.createTestToken(t, user.ID, time.Hour, data.ScopeActivation)
 
 	code, _, body := ts.putJSON(t, "/v1/users/activated", map[string]any{
 		"token": activationToken.Plaintext,

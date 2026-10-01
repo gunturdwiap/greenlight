@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -32,15 +33,26 @@ func (m *mockMailer) Send(recipient string, templateFile string, data any) error
 	return nil
 }
 
-func newTestApplication(t *testing.T) *application {
+type testApplication struct {
+	*application
+	mailer *mockMailer
+}
+
+func newTestApplication(t *testing.T) *testApplication {
 	mailer := &mockMailer{}
-	return &application{
+	db := newTestDB(t)
+	app := &application{
 		config: config{
 			env: "testing",
 		},
 		logger: slog.New(slog.DiscardHandler),
-		models: data.NewModels(newTestDB(t)),
+		models: data.NewModels(db),
 		mailer: mailer,
+	}
+
+	return &testApplication{
+		application: app,
+		mailer:      mailer,
 	}
 }
 
@@ -85,6 +97,56 @@ func newTestDB(t *testing.T) *sql.DB {
 	})
 
 	return db
+}
+
+type userOption func(*data.User)
+
+func withEmail(email string) userOption {
+	return func(u *data.User) {
+		u.Email = email
+	}
+}
+
+func withActivated(activated bool) userOption {
+	return func(u *data.User) {
+		u.Activated = activated
+	}
+}
+
+func (app *testApplication) createTestUser(t *testing.T, opts ...userOption) *data.User {
+	t.Helper()
+
+	user := &data.User{
+		Name: "test",
+		// TODO
+		Email:     fmt.Sprintf("user-%d@example.com", time.Now().UnixNano()),
+		Activated: false,
+	}
+	if err := user.Password.Set("pa55word"); err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO
+	for _, opt := range opts {
+		opt(user)
+	}
+
+	if err := app.models.Users.Insert(user); err != nil {
+		t.Fatal(err)
+	}
+
+	return user
+}
+
+func (app *testApplication) createTestToken(t *testing.T, userID int64, ttl time.Duration, scope string) *data.Token {
+	t.Helper()
+
+	token, err := app.models.Tokens.New(userID, ttl, scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return token
 }
 
 type testServer struct {
