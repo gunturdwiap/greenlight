@@ -43,7 +43,6 @@ func TestRegisterUserDuplicateEmail(t *testing.T) {
 		"email":    "test@example.com",
 		"password": "pa55word",
 	})
-
 	assert.Equal(t, http.StatusUnprocessableEntity, code)
 }
 
@@ -159,17 +158,83 @@ func TestActivateUserMissingToken(t *testing.T) {
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
 
-func TestActivateUserAlreadyActivated(t *testing.T) {
+func TestUpdateUserPassword(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t)
-	activationToken := app.createTestToken(t, user.ID, time.Hour, data.ScopeActivation)
+	user := app.createTestUser(t, withActivated(true))
+	passwordResetToken := app.createTestToken(t, user.ID, time.Hour, data.ScopePasswordReset)
 
-	code, _, body := ts.putJSON(t, "/v1/users/activated", map[string]any{
-		"token": activationToken.Plaintext,
+	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
+		"token":    passwordResetToken.Plaintext,
+		"password": "updatedPa55word",
 	})
 
 	assert.Equal(t, code, http.StatusOK)
-	assert.StringContains(t, body, `"activated": true`)
+
+	updatedUser, err := app.models.Users.GetByEmail(user.Email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ok, err := updatedUser.Password.Matches("updatedPa55word")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, ok)
+}
+
+func TestUpdateUserPasswordInvalidToken(t *testing.T) {
+	app := newTestApplication(t)
+	ts := newTestServer(t, app.routes())
+
+	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
+		"token":    "invalid",
+		"password": "updatedPa55word",
+	})
+
+	assert.Equal(t, code, http.StatusUnprocessableEntity)
+}
+
+func TestUpdateUserPasswordExpiredToken(t *testing.T) {
+	app := newTestApplication(t)
+	ts := newTestServer(t, app.routes())
+
+	user := app.createTestUser(t, withActivated(true))
+	passwordResetToken := app.createTestToken(t, user.ID, -time.Hour, data.ScopePasswordReset)
+
+	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
+		"token":    passwordResetToken.Plaintext,
+		"password": "updatedPa55word",
+	})
+
+	assert.Equal(t, code, http.StatusUnprocessableEntity)
+}
+
+func TestUpdateUserPasswordMissingToken(t *testing.T) {
+	app := newTestApplication(t)
+	ts := newTestServer(t, app.routes())
+
+	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
+		// no token
+		"password": "updatedPa55word",
+	})
+
+	assert.Equal(t, code, http.StatusUnprocessableEntity)
+}
+
+func TestUpdateUserPasswordMissingPassword(t *testing.T) {
+	app := newTestApplication(t)
+	ts := newTestServer(t, app.routes())
+
+	user := app.createTestUser(t, withActivated(true))
+	passwordResetToken := app.createTestToken(t, user.ID, time.Hour, data.ScopePasswordReset)
+
+	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
+		"token": passwordResetToken.Plaintext,
+		// no password
+	})
+
+	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }

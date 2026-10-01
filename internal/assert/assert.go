@@ -27,3 +27,9 @@ func Nil(t *testing.T, actual any) {
 		t.Errorf("got: %v; expected: nil", actual)
 	}
 }
+
+func True(t *testing.T, ok bool) {
+	if !ok {
+		t.Error("got false; want true")
+	}
+}
