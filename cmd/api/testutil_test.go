@@ -101,12 +101,6 @@ func newTestDB(t *testing.T) *sql.DB {
 
 type userOption func(*data.User)
 
-func withEmail(email string) userOption {
-	return func(u *data.User) {
-		u.Email = email
-	}
-}
-
 func withActivated(activated bool) userOption {
 	return func(u *data.User) {
 		u.Activated = activated
