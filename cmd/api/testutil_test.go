@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -99,30 +100,17 @@ func newTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-type userOption func(*data.User)
-
-func withActivated(activated bool) userOption {
-	return func(u *data.User) {
-		u.Activated = activated
-	}
-}
-
-func (app *testApplication) createTestUser(t *testing.T, opts ...userOption) *data.User {
+func (app *testApplication) createTestUser(t *testing.T, activated bool) *data.User {
 	t.Helper()
 
+	now := time.Now().UnixNano()
 	user := &data.User{
-		Name: "test",
-		// TODO
-		Email:     fmt.Sprintf("user-%d@example.com", time.Now().UnixNano()),
-		Activated: false,
+		Name:      fmt.Sprintf("user-%d", now),
+		Email:     fmt.Sprintf("user-%d@example.com", now),
+		Activated: activated,
 	}
 	if err := user.Password.Set("pa55word"); err != nil {
 		t.Fatal(err)
-	}
-
-	// TODO
-	for _, opt := range opts {
-		opt(user)
 	}
 
 	if err := app.models.Users.Insert(user); err != nil {
@@ -143,6 +131,32 @@ func (app *testApplication) createTestToken(t *testing.T, userID int64, ttl time
 	return token
 }
 
+func (app *testApplication) createTestPermissions(t *testing.T, userID int64, codes ...string) {
+	t.Helper()
+
+	err := app.models.Permissions.AddForUser(userID, codes...)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (app *testApplication) createTestMovie(t *testing.T) *data.Movie {
+	t.Helper()
+
+	movie := &data.Movie{
+		Title:   "John Wick",
+		Year:    2014,
+		Runtime: data.Runtime(101),
+		Genres:  []string{"action", "crime"},
+	}
+	err := app.models.Movies.Insert(movie)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return movie
+}
+
 type testServer struct {
 	*httptest.Server
 }
@@ -154,10 +168,17 @@ func newTestServer(t *testing.T, h http.Handler) *testServer {
 	return &testServer{s}
 }
 
-func (ts *testServer) get(t *testing.T, urlPath string) (int, http.Header, string) {
+func (ts *testServer) get(t *testing.T, urlPath string, headers http.Header) (int, http.Header, string) {
 	t.Helper()
 
-	rs, err := ts.Client().Get(ts.URL + urlPath)
+	r, err := http.NewRequest(http.MethodGet, ts.URL+urlPath, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	maps.Copy(r.Header, headers)
+
+	rs, err := ts.Client().Do(r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +192,7 @@ func (ts *testServer) get(t *testing.T, urlPath string) (int, http.Header, strin
 	return rs.StatusCode, rs.Header, string(body)
 }
 
-func (ts *testServer) sendJSON(t *testing.T, method, urlPath string, data any) (int, http.Header, string) {
+func (ts *testServer) sendJSON(t *testing.T, method, urlPath string, data any, headers http.Header) (int, http.Header, string) {
 	t.Helper()
 
 	var buf bytes.Buffer
@@ -180,13 +201,15 @@ func (ts *testServer) sendJSON(t *testing.T, method, urlPath string, data any) (
 		t.Fatal(err)
 	}
 
-	req, err := http.NewRequest(method, ts.URL+urlPath, &buf)
+	r, err := http.NewRequest(method, ts.URL+urlPath, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	maps.Copy(r.Header, headers)
 
-	rs, err := ts.Client().Do(req)
+	r.Header.Set("Content-Type", "application/json")
+
+	rs, err := ts.Client().Do(r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,12 +223,22 @@ func (ts *testServer) sendJSON(t *testing.T, method, urlPath string, data any) (
 	return rs.StatusCode, rs.Header, string(body)
 }
 
-func (ts *testServer) postJSON(t *testing.T, urlPath string, data any) (int, http.Header, string) {
+func (ts *testServer) postJSON(t *testing.T, urlPath string, data any, headers http.Header) (int, http.Header, string) {
 	t.Helper()
-	return ts.sendJSON(t, http.MethodPost, urlPath, data)
+	return ts.sendJSON(t, http.MethodPost, urlPath, data, headers)
 }
 
-func (ts *testServer) putJSON(t *testing.T, urlPath string, data any) (int, http.Header, string) {
+func (ts *testServer) putJSON(t *testing.T, urlPath string, data any, headers http.Header) (int, http.Header, string) {
 	t.Helper()
-	return ts.sendJSON(t, http.MethodPut, urlPath, data)
+	return ts.sendJSON(t, http.MethodPut, urlPath, data, headers)
+}
+
+func (ts *testServer) patchJSON(t *testing.T, urlPath string, data any, headers http.Header) (int, http.Header, string) {
+	t.Helper()
+	return ts.sendJSON(t, http.MethodPatch, urlPath, data, headers)
+}
+
+func (ts *testServer) delete(t *testing.T, urlPath string, headers http.Header) (int, http.Header, string) {
+	t.Helper()
+	return ts.sendJSON(t, http.MethodDelete, urlPath, nil, headers)
 }

@@ -11,7 +11,7 @@ func TestHealthCheck(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	code, _, body := ts.get(t, "/v1/healthcheck")
+	code, _, body := ts.get(t, "/v1/healthcheck", nil)
 
 	assert.Equal(t, code, http.StatusOK)
 

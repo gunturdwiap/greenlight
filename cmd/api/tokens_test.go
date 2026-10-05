@@ -11,12 +11,12 @@ func TestCreateAuthenticationToken(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t)
+	user := app.createTestUser(t, false)
 
 	code, _, body := ts.postJSON(t, "/v1/tokens/authentication", map[string]any{
 		"email":    user.Email,
 		"password": "pa55word",
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusCreated)
 	assert.StringContains(t, body, "authentication_token")
@@ -26,18 +26,18 @@ func TestCreateAuthenticationTokenInvalidCredentials(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t)
+	user := app.createTestUser(t, false)
 
 	code, _, _ := ts.postJSON(t, "/v1/tokens/authentication", map[string]string{
 		"email":    user.Email,
 		"password": "wrongpassword",
-	})
+	}, nil)
 	assert.Equal(t, http.StatusUnauthorized, code)
 
 	code, _, _ = ts.postJSON(t, "/v1/tokens/authentication", map[string]string{
 		"email":    "wrongemail@example.com",
 		"password": "pa55word",
-	})
+	}, nil)
 	assert.Equal(t, http.StatusUnauthorized, code)
 }
 
@@ -84,7 +84,7 @@ func TestCreateAuthenticationTokenValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			code, _, _ := ts.postJSON(t, "/v1/tokens/authentication", tt.payload)
+			code, _, _ := ts.postJSON(t, "/v1/tokens/authentication", tt.payload, nil)
 			assert.Equal(t, tt.expectedCode, code)
 		})
 	}
@@ -94,11 +94,11 @@ func TestCreatePasswordResetToken(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t, withActivated(true))
+	user := app.createTestUser(t, true)
 
 	code, _, _ := ts.postJSON(t, "/v1/tokens/password-reset", map[string]string{
 		"email": user.Email,
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusAccepted)
 	assert.Equal(t, app.mailer.recipient, user.Email)
@@ -109,11 +109,11 @@ func TestCreatePasswordResetTokenInactiveUser(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t)
+	user := app.createTestUser(t, false)
 
 	code, _, _ := ts.postJSON(t, "/v1/tokens/password-reset", map[string]string{
 		"email": user.Email,
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
@@ -124,7 +124,7 @@ func TestCreatePasswordResetTokenNonExistentEmail(t *testing.T) {
 
 	code, _, _ := ts.postJSON(t, "/v1/tokens/password-reset", map[string]string{
 		"email": "nonexistent@example.com",
-	})
+	}, nil)
 
 	assert.Equal(t, http.StatusUnprocessableEntity, code)
 }
@@ -156,7 +156,7 @@ func TestCreatePasswordResetTokenValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			code, _, _ := ts.postJSON(t, "/v1/tokens/password-reset", tt.payload)
+			code, _, _ := ts.postJSON(t, "/v1/tokens/password-reset", tt.payload, nil)
 			assert.Equal(t, tt.expectedCode, code)
 		})
 	}

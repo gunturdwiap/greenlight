@@ -18,7 +18,7 @@ func TestRegisterUser(t *testing.T) {
 		"name":     "test",
 		"email":    "test@example.com",
 		"password": "pa55word",
-	})
+	}, nil)
 
 	assert.Equal(t, app.mailer.recipient, "test@example.com")
 	assert.Equal(t, app.mailer.templateFile, "user_welcome.tmpl")
@@ -34,7 +34,7 @@ func TestRegisterUserDuplicateEmail(t *testing.T) {
 		"name":     "test",
 		"email":    "test@example.com",
 		"password": "pa55word",
-	})
+	}, nil)
 	assert.Equal(t, http.StatusAccepted, code)
 
 	// second registration
@@ -42,7 +42,7 @@ func TestRegisterUserDuplicateEmail(t *testing.T) {
 		"name":     "another one",
 		"email":    "test@example.com",
 		"password": "pa55word",
-	})
+	}, nil)
 	assert.Equal(t, http.StatusUnprocessableEntity, code)
 }
 
@@ -101,7 +101,7 @@ func TestRegisterUserValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			code, _, _ := ts.postJSON(t, "/v1/users", tt.payload)
+			code, _, _ := ts.postJSON(t, "/v1/users", tt.payload, nil)
 			assert.Equal(t, tt.expectedCode, code)
 		})
 	}
@@ -111,12 +111,12 @@ func TestActivateUser(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t)
+	user := app.createTestUser(t, false)
 	activationToken := app.createTestToken(t, user.ID, time.Hour, data.ScopeActivation)
 
 	code, _, body := ts.putJSON(t, "/v1/users/activated", map[string]any{
 		"token": activationToken.Plaintext,
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusOK)
 	assert.StringContains(t, body, `"activated": true`)
@@ -128,7 +128,7 @@ func TestActivateUserInvalidToken(t *testing.T) {
 
 	code, _, _ := ts.putJSON(t, "/v1/users/activated", map[string]any{
 		"token": "invalid-token",
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
@@ -137,12 +137,12 @@ func TestActivateUserExpiredToken(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t)
+	user := app.createTestUser(t, false)
 	activationToken := app.createTestToken(t, user.ID, -time.Hour, data.ScopeActivation)
 
 	code, _, _ := ts.putJSON(t, "/v1/users/activated", map[string]any{
 		"token": activationToken.Plaintext,
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
@@ -153,7 +153,7 @@ func TestActivateUserMissingToken(t *testing.T) {
 
 	code, _, _ := ts.putJSON(t, "/v1/users/activated", map[string]any{
 		// no token
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
@@ -162,13 +162,13 @@ func TestUpdateUserPassword(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t, withActivated(true))
+	user := app.createTestUser(t, true)
 	passwordResetToken := app.createTestToken(t, user.ID, time.Hour, data.ScopePasswordReset)
 
 	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
 		"token":    passwordResetToken.Plaintext,
 		"password": "updatedPa55word",
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusOK)
 
@@ -192,7 +192,7 @@ func TestUpdateUserPasswordInvalidToken(t *testing.T) {
 	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
 		"token":    "invalid",
 		"password": "updatedPa55word",
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
@@ -201,13 +201,13 @@ func TestUpdateUserPasswordExpiredToken(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t, withActivated(true))
+	user := app.createTestUser(t, true)
 	passwordResetToken := app.createTestToken(t, user.ID, -time.Hour, data.ScopePasswordReset)
 
 	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
 		"token":    passwordResetToken.Plaintext,
 		"password": "updatedPa55word",
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
@@ -219,7 +219,7 @@ func TestUpdateUserPasswordMissingToken(t *testing.T) {
 	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
 		// no token
 		"password": "updatedPa55word",
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
@@ -228,13 +228,13 @@ func TestUpdateUserPasswordMissingPassword(t *testing.T) {
 	app := newTestApplication(t)
 	ts := newTestServer(t, app.routes())
 
-	user := app.createTestUser(t, withActivated(true))
+	user := app.createTestUser(t, true)
 	passwordResetToken := app.createTestToken(t, user.ID, time.Hour, data.ScopePasswordReset)
 
 	code, _, _ := ts.putJSON(t, "/v1/users/password", map[string]any{
 		"token": passwordResetToken.Plaintext,
 		// no password
-	})
+	}, nil)
 
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
 }
